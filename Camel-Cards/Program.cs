@@ -1,4 +1,5 @@
 ﻿
+using System;
 using System.Reflection.Metadata;
 using System.Threading;
 
@@ -10,7 +11,7 @@ Dictionary<char, Card> dctCardPack = new Dictionary<char, Card>();
 List<Hand> lstHands = new List<Hand>();
 
 
-string strCardLabels = "A, K, Q, J, T, 9, 8, 7, 6, 5, 4, 3, 2";
+string strCardLabels = "A, K, Q, T, 9, 8, 7, 6, 5, 4, 3, 2, J";
 
 // Split the string by commas and remove any leading or trailing spaces
 string[] arrCardValuesArray = strCardLabels.Split(',').Select(s => s.Trim()).ToArray();
@@ -18,7 +19,7 @@ string[] arrCardValuesArray = strCardLabels.Split(',').Select(s => s.Trim()).ToA
 // Convert the array of strings to an array of chars
 char[] charArray = arrCardValuesArray.Select(s => s[0]).ToArray();
 
-int iValue = 14;
+int iValue = 13;
 foreach (char cLabel in charArray)
 {
     Card objCard = new Card(cLabel, iValue);
@@ -42,6 +43,28 @@ using (StreamReader reader = new StreamReader(strFileName))
         int iBid = int.Parse(strBid);
 
         Helper.HandType enumHandType = Helper.AnalyzeHand(strCards);
+
+        if(strCards.Contains("J"))
+        {
+            int iNumberOfJokers = strCards.Count(c => c == 'J');
+            string[] arrResults = Helper.GenerateCombinations("AKQT98765432J", iNumberOfJokers);
+
+            string strNewhand = strCards.Replace("J", "").Trim();
+
+            for (int iLoop = 0; iLoop < arrResults.Length; iLoop++)
+            {
+                Helper.HandType enumNewHandType = Helper.AnalyzeHand(strNewhand + arrResults[iLoop]);
+
+                if ((int)enumNewHandType > (int)enumHandType)
+                {
+                    enumHandType = enumNewHandType;
+                }
+            }
+        }
+
+        //32T3K is still the only one pair; it doesn't contain any jokers, so its strength doesn't increase.
+        //KK677 is now the only two pair, making it the second-weakest hand.
+        //T55J5, KTJJT, and QQQJA are now all four of a kind! T55J5 gets rank 3, QQQJA gets rank 4, and KTJJT gets rank 5.
 
         List<int> lstCardValues = new List<int>();
         foreach (char cCard in strCards)
@@ -121,6 +144,33 @@ public class Hand
 
 public static class Helper
 {
+    public static string[] GenerateCombinations(string strValues, int numberOfJs)
+    {
+        // Calculate the total number of combinations
+        int iTotalCombinations = (int)Math.Pow(strValues.Length, numberOfJs);
+
+        // Initialize the result array
+        string[] combinations = new string[iTotalCombinations];
+
+        // Generate all combinations
+        for (int i = 0; i < iTotalCombinations; i++)
+        {
+            char[] combinationChars = new char[numberOfJs];
+
+            // Calculate indices for each 'J'
+            for (int j = 0; j < numberOfJs; j++)
+            {
+                int index = (i / (int)Math.Pow(strValues.Length, j)) % strValues.Length;
+                combinationChars[j] = strValues[index];
+            }
+
+            combinations[i] = new string(combinationChars);
+        }
+
+        return combinations;
+    }
+
+
     public enum HandType
     {
         HighCard,
